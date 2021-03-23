@@ -46,6 +46,7 @@ import org.wso2.carbon.identity.workflow.mgt.util.WorkflowManagementUtil;
 import org.wso2.carbon.identity.workflow.mgt.workflow.AbstractWorkflow;
 import org.wso2.carbon.stratos.common.listeners.TenantMgtListener;
 import org.wso2.carbon.user.core.service.RealmService;
+import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.utils.ConfigurationContextService;
 import java.io.IOException;
 import java.io.InputStream;
@@ -205,6 +206,23 @@ public class WorkflowImplServiceComponent {
 
     protected void unsetWorkflowImplServiceListener(WorkflowImplServiceListener workflowListener) {
         WorkflowImplServiceDataHolder.getInstance().getWorkflowListenerList().remove(workflowListener);
+    }
+
+    @Reference(
+            name = "registry.service",
+            service = RegistryService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRegistryService"
+    )
+    protected void setRegistryService(RegistryService registryService) {
+
+        WorkflowImplServiceDataHolder.getInstance().setRegistryService(registryService);
+    }
+
+    protected void unsetRegistryService(RegistryService registryService) {
+
+        WorkflowImplServiceDataHolder.getInstance().setRegistryService(null);
     }
 }
 

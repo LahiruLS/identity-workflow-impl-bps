@@ -65,13 +65,18 @@ import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.registry.core.Registry;
+import org.wso2.carbon.registry.core.Resource;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
 
 import javax.naming.InvalidNameException;
 import javax.naming.ldap.LdapName;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.wso2.carbon.user.core.UserStoreConfigConstants.DOMAIN_NAME;
 
@@ -81,6 +86,8 @@ public class RequestExecutor implements WorkFlowExecutor {
     private static final String EXECUTOR_NAME = "BPELExecutor";
     private static final String DEFAULT_MANAGER_CLAIM = "http://wso2.org/claims/managers";
     private static final String MANAGER_RDN_CLAIM = "http://wso2.org/claims/managerRDN";
+    public static final String CONFIG_WORKFLOW_REGISTRY_RESOURCE = "/identity/workflow/telenor";
+    public static final String CONFIG_WORKFLOW_REGISTRY_PROPERTY = "telenorWorkflows";
 
 
     private static final String WORK_FLOW_MANAGER_CLAIM = "WorkFlowManagerClaimConfig";
@@ -124,7 +131,9 @@ public class RequestExecutor implements WorkFlowExecutor {
 
         Map<String, String> notificationData = new HashMap<>();
         validateExecutionParams();
-        prepareForExecute(workFlowRequest, notificationData);
+        if (isWorkflowSwitchable()) {
+            prepareForExecute(workFlowRequest, notificationData);
+        }
         OMElement requestBody = WorkflowRequestBuilder.buildXMLRequest(workFlowRequest, this.parameterList);
         try {
             callService(requestBody);
@@ -133,10 +142,28 @@ public class RequestExecutor implements WorkFlowExecutor {
                     workFlowRequest.getUuid(), axisFault);
         }
         try {
-            triggerWorkFlowNotification(notificationData);
+            if (isWorkflowSwitchable()) {
+                triggerWorkFlowNotification(notificationData);
+            }
         } catch (WorkflowException workflowException) {
             log.error("Error occurred while sending the email notification.", workflowException);
         }
+    }
+
+    private boolean isWorkflowSwitchable() throws WorkflowException{
+
+        for (Parameter parameter : this.parameterList) {
+            if ((parameter.getParamName().equals(WFImplConstant.ParameterName.HT_SUBJECT) &&
+                    StringUtils.isNotBlank(parameter.getParamValue())) ||
+                    (parameter.getParamName().equals(WFConstant.ParameterName.WORKFLOW_NAME) &&
+                            StringUtils.isNotBlank(parameter.getParamValue()))) {
+                String value = parameter.getParamValue();
+                if (readSwitchableWorkFlowFromRegistry().contains(value)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
@@ -410,5 +437,50 @@ public class RequestExecutor implements WorkFlowExecutor {
             }
         }
         return null;
+    }
+
+    private Registry getConfigRegistry(int tenantId) throws RegistryException {
+
+        return WorkflowImplServiceDataHolder.getInstance().getRegistryService().getConfigSystemRegistry(tenantId);
+    }
+
+    private int getTenantId() {
+
+        return PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
+    }
+
+    private List<String> readSwitchableWorkFlowFromRegistry() throws WorkflowException {
+
+        // Management roles are stored in the config registry property.
+        String regPropertyValue;
+        try {
+            Registry registry = getConfigRegistry(getTenantId());
+            if (registry.resourceExists(CONFIG_WORKFLOW_REGISTRY_RESOURCE)) {
+                Resource resource = registry.get(CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                regPropertyValue = resource.getProperty(CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                if (!StringUtils.isNotBlank(regPropertyValue)) {
+                    throw new WorkflowException("Telenor Registry resource does not exists." +
+                            " Path : " + CONFIG_WORKFLOW_REGISTRY_PROPERTY + "/" + CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                }
+            } else {
+                throw new WorkflowException("Telenor Registry resource does not exists." +
+                        " Path : " + CONFIG_WORKFLOW_REGISTRY_PROPERTY + "/" + CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+            }
+        } catch (RegistryException e) {
+            throw new WorkflowException("Error occurred while initializing the registry.", e);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug(CONFIG_WORKFLOW_REGISTRY_PROPERTY + " : " + regPropertyValue);
+        }
+
+        // Split comma separated management roles.
+        List<String> configuredWorkflows = StringUtils.split(regPropertyValue, ',') == null ?
+                new ArrayList<>() :
+                Arrays.asList(StringUtils.split(regPropertyValue, ','));
+        configuredWorkflows = configuredWorkflows.stream().map(String::trim).collect(Collectors.toList());
+        if (log.isDebugEnabled()) {
+            log.debug("Configured list of workflows : " + Arrays.toString(configuredWorkflows.toArray()));
+        }
+        return configuredWorkflows;
     }
 }

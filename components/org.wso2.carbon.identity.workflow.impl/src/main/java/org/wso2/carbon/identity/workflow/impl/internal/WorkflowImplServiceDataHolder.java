@@ -27,6 +27,7 @@ import org.wso2.carbon.identity.workflow.impl.listener.WorkflowImplServiceListen
 import org.wso2.carbon.identity.workflow.mgt.WorkflowManagementService;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.utils.ConfigurationContextService;
+import org.wso2.carbon.registry.core.service.RegistryService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,7 @@ public class WorkflowImplServiceDataHolder {
     private static final Log log = LogFactory.getLog(WorkflowImplServiceDataHolder.class);
 
     private RealmService realmService;
+    private RegistryService registryService;
     private ConfigurationContextService configurationContextService;
     private BundleContext bundleContext;
     private List<WorkflowImplServiceListener> workflowListenerList = new ArrayList<>();
@@ -115,6 +117,16 @@ public class WorkflowImplServiceDataHolder {
 
     public List<WorkflowImplServiceListener> getWorkflowListenerList() {
         return workflowListenerList;
+    }
+
+    public RegistryService getRegistryService() {
+
+        return registryService;
+    }
+
+    public void setRegistryService(RegistryService registryService) {
+
+        this.registryService = registryService;
     }
 
 }
