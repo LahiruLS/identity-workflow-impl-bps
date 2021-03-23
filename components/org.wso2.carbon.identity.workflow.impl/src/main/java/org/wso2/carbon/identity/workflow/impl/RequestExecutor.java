@@ -131,7 +131,8 @@ public class RequestExecutor implements WorkFlowExecutor {
 
         Map<String, String> notificationData = new HashMap<>();
         validateExecutionParams();
-        if (isWorkflowSwitchable()) {
+        boolean isWorkflowSwitchable = isWorkflowSwitchable();
+        if (isWorkflowSwitchable) {
             prepareForExecute(workFlowRequest, notificationData);
         }
         OMElement requestBody = WorkflowRequestBuilder.buildXMLRequest(workFlowRequest, this.parameterList);
@@ -142,7 +143,7 @@ public class RequestExecutor implements WorkFlowExecutor {
                     workFlowRequest.getUuid(), axisFault);
         }
         try {
-            if (isWorkflowSwitchable()) {
+            if (isWorkflowSwitchable) {
                 triggerWorkFlowNotification(notificationData);
             }
         } catch (WorkflowException workflowException) {
@@ -456,7 +457,7 @@ public class RequestExecutor implements WorkFlowExecutor {
         try {
             Registry registry = getConfigRegistry(getTenantId());
             if (registry.resourceExists(CONFIG_WORKFLOW_REGISTRY_RESOURCE)) {
-                Resource resource = registry.get(CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                Resource resource = registry.get(CONFIG_WORKFLOW_REGISTRY_RESOURCE);
                 regPropertyValue = resource.getProperty(CONFIG_WORKFLOW_REGISTRY_PROPERTY);
                 if (!StringUtils.isNotBlank(regPropertyValue)) {
                     throw new WorkflowException("Telenor Registry resource does not exists." +
