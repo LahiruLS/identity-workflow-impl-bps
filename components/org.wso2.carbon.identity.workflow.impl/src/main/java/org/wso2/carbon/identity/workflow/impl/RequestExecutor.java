@@ -468,12 +468,14 @@ public class RequestExecutor implements WorkFlowExecutor {
                 Resource resource = registry.get(CONFIG_WORKFLOW_REGISTRY_RESOURCE);
                 regPropertyValue = resource.getProperty(CONFIG_WORKFLOW_REGISTRY_PROPERTY);
                 if (!StringUtils.isNotBlank(regPropertyValue)) {
-                    throw new WorkflowException("Telenor Registry resource does not exists." +
+                    log.info("Telenor Registry resource does not exists." +
                             " Path : " + CONFIG_WORKFLOW_REGISTRY_PROPERTY + "/" + CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                    return new ArrayList<String>();
                 }
             } else {
-                throw new WorkflowException("Telenor Registry resource does not exists." +
+                log.info("Telenor Registry resource does not exists." +
                         " Path : " + CONFIG_WORKFLOW_REGISTRY_PROPERTY + "/" + CONFIG_WORKFLOW_REGISTRY_PROPERTY);
+                return new ArrayList<String>();
             }
         } catch (RegistryException e) {
             throw new WorkflowException("Error occurred while initializing the registry.", e);
