@@ -159,7 +159,8 @@ public class RequestExecutor implements WorkFlowExecutor {
                     (parameter.getParamName().equals(WFConstant.ParameterName.WORKFLOW_NAME) &&
                             StringUtils.isNotBlank(parameter.getParamValue()))) {
                 String value = parameter.getParamValue();
-                if (readSwitchableWorkFlowFromRegistry().contains(value)) {
+                if (readSwitchableWorkFlowFromRegistry().contains(value)
+                        || readSwitchableWorkFlowFromRegistry().contains("*")) {
                     return true;
                 }
             }
