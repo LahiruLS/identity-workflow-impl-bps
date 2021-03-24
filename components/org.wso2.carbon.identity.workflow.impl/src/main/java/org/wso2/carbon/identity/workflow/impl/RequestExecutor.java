@@ -275,6 +275,9 @@ public class RequestExecutor implements WorkFlowExecutor {
                         String stepName = WFImplConstant.ParameterName.STEPS_USER_AND_ROLE + "-step-" + step + "-users";
                         if (stepName.equalsIgnoreCase(parameter.getqName()) && switchingStep > Integer.parseInt(step)) {
                             switchingStep = this.parameterList.indexOf(parameter);
+                        } else if (stepName.equalsIgnoreCase(parameter.getqName()) && switchingStep < Integer.parseInt(step)) {
+                            String managerString = manager + "," + parameter.getParamValue();
+                            notificationData.put("managers", managerString);
                         }
                     }
                 }
