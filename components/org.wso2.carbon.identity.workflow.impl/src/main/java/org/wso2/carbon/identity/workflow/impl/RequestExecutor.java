@@ -154,7 +154,7 @@ public class RequestExecutor implements WorkFlowExecutor {
     private boolean isWorkflowSwitchable() throws WorkflowException{
 
         List<String> switchableWorkflows = readSwitchableWorkFlowFromRegistry();
-        if (switchableWorkflows.isEmpty()) {
+        if (switchableWorkflows == null || switchableWorkflows.isEmpty()) {
             return true;
         }
         for (Parameter parameter : this.parameterList) {
