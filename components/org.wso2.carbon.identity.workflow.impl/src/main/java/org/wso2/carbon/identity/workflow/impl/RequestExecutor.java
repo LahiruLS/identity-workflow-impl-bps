@@ -153,14 +153,18 @@ public class RequestExecutor implements WorkFlowExecutor {
 
     private boolean isWorkflowSwitchable() throws WorkflowException{
 
+        List<String> switchableWorkflows = readSwitchableWorkFlowFromRegistry();
+        if (switchableWorkflows.isEmpty()) {
+            return true;
+        }
         for (Parameter parameter : this.parameterList) {
             if ((parameter.getParamName().equals(WFImplConstant.ParameterName.HT_SUBJECT) &&
                     StringUtils.isNotBlank(parameter.getParamValue())) ||
                     (parameter.getParamName().equals(WFConstant.ParameterName.WORKFLOW_NAME) &&
                             StringUtils.isNotBlank(parameter.getParamValue()))) {
                 String value = parameter.getParamValue();
-                if (readSwitchableWorkFlowFromRegistry().contains(value)
-                        || readSwitchableWorkFlowFromRegistry().contains("*")) {
+                if (switchableWorkflows.contains(value)
+                        || switchableWorkflows.contains("*")) {
                     return true;
                 }
             }
