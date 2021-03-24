@@ -326,7 +326,7 @@ public class RequestExecutor implements WorkFlowExecutor {
                         email = userStoreManager.getUserClaimValue(manager, "http://wso2.org/claims/emailaddress", null);
                     }
                 } catch (org.wso2.carbon.user.api.UserStoreException e) {
-                    log.error(e);
+                    log.error("User Store error occurred.", e);
                     throw new WorkflowException("User Store error occurred.", e);
                 }
             }
@@ -343,9 +343,9 @@ public class RequestExecutor implements WorkFlowExecutor {
                 if (configurationContext != null && configurationContext.getAxisConfiguration().getTransportsOut()
                         .containsKey(TRANSPORT_MAILTO)) {
                     if (!StringUtils.isNotBlank(email)) {
-                        log.error("Notification will not be triggered as the manager does not have configured the " +
-                                "email" +
-                                " address in his/her profile.");
+                        log.error("Notification will not be triggered as the approver " + manager + " does not have " +
+                                "configured the email address in his/her profile.");
+                        continue;
                     }
                     NotificationSender notificationSender = new NotificationSender();
                     NotificationDataDTO notificationData = new NotificationDataDTO();
