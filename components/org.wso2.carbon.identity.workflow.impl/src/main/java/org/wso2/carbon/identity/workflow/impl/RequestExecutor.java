@@ -28,6 +28,7 @@ import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.context.ConfigurationContextFactory;
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.axis2.transport.http.HttpTransportProperties;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -256,20 +257,39 @@ public class RequestExecutor implements WorkFlowExecutor {
         for (RequestParameter requestParameter : requestParameters) {
             if (userStoreManager != null && "Username".equalsIgnoreCase(requestParameter.getName())) {
                 try {
-                    if (requestParameter.getValue() != null) {
-                        String managerDn = userStoreManager.getUserClaimValue(initiator,
+                    if (requestParameter.getValue() != null &&
+                            userStoreManager.isExistingUser(String.valueOf(requestParameter.getValue()))) {
+                        String managerDn =
+                                userStoreManager.getUserClaimValue(String.valueOf(requestParameter.getValue()),
                                 getWorkFlowManagerClaimConfig(), null);
                         manager = getManger(managerDn, initiator, tenantId);
                         notificationData.put("managers", manager);
                         notificationData.put("target", String.valueOf(requestParameter.getValue()));
+                    } else {
+                        log.info("Can not proceed with workflow request switching due to the user: " +
+                                requestParameter.getValue() + " is null. Initiator: " + initiator + " of the request will " +
+                                "be used.");
                     }
                 } catch (org.wso2.carbon.user.api.UserStoreException e) {
                     throw new WorkflowException("User Store error occurred.", e);
                 }
             }
         }
+        if (!StringUtils.isNotBlank(manager)) {
+            String managerDn = null;
+            try {
+                managerDn = userStoreManager.getUserClaimValue(initiator,
+                        getWorkFlowManagerClaimConfig(), null);
+                manager = getManger(managerDn, initiator, tenantId);
+                notificationData.put("managers", manager);
+                notificationData.put("target", initiator);
+            } catch (UserStoreException e) {
+                log.error(e);
+            }
+        }
         if (StringUtils.isNotBlank(manager)) {
             int switchingStep = Integer.MAX_VALUE;
+            String managerString = manager;
             for (Parameter parameter : this.parameterList) {
                 if (parameter.getParamName().equals(WFImplConstant.ParameterName.STEPS_USER_AND_ROLE) &&
                         StringUtils.isNotBlank(parameter.getParamValue())) {
@@ -277,19 +297,21 @@ public class RequestExecutor implements WorkFlowExecutor {
                     String step = key[2];
                     String value = parameter.getParamValue();
                     if (StringUtils.isNotBlank(value) && StringUtils.isNotBlank(step)) {
-                        String stepName = WFImplConstant.ParameterName.STEPS_USER_AND_ROLE + "-step-" + step + "-users";
-                        if (stepName.equalsIgnoreCase(parameter.getqName()) && switchingStep > Integer.parseInt(step)) {
+                        String firstStepName = WFImplConstant.ParameterName.STEPS_USER_AND_ROLE + "-step-1-users";
+                        String nextStepName = WFImplConstant.ParameterName.STEPS_USER_AND_ROLE + "-step-" + step + "-users";
+                        if (firstStepName.equalsIgnoreCase(parameter.getqName()) && Integer.parseInt(step) == 1) {
                             switchingStep = this.parameterList.indexOf(parameter);
-                        } else if (stepName.equalsIgnoreCase(parameter.getqName()) && switchingStep < Integer.parseInt(step)) {
-                            String managerString = manager + "," + parameter.getParamValue();
+                            this.parameterList.get(switchingStep).setParamValue(manager);
+                        } else if (nextStepName.equalsIgnoreCase(parameter.getqName())) {
+                            managerString = managerString + "," + parameter.getParamValue();
                             notificationData.put("managers", managerString);
                         }
                     }
                 }
             }
-            if (switchingStep != Integer.MAX_VALUE) {
-                this.parameterList.get(switchingStep).setParamValue(manager);
-            }
+//            if (switchingStep != Integer.MAX_VALUE) {
+//                this.parameterList.get(switchingStep).setParamValue(manager);
+//            }
         }
     }
 
@@ -316,6 +338,10 @@ public class RequestExecutor implements WorkFlowExecutor {
         RealmService realmService = WorkflowImplServiceDataHolder.getInstance().getRealmService();
         UserStoreManager userStoreManager;
         UserRealm userRealm;
+        if (ArrayUtils.isEmpty(managers)) {
+            log.error("Can not trigger email notification for workflow request, Manager is empty.");
+            return;
+        }
         try {
             userRealm = realmService.getTenantUserRealm(tenantId);
             userStoreManager = (UserStoreManager) userRealm.getUserStoreManager();
